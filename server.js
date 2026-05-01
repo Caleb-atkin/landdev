@@ -1,4 +1,6 @@
-require('dotenv').config();
+// override:true so .env wins over stale shell env vars during local dev.
+// In Vercel/Railway, .env isn't deployed — runtime envs are used directly.
+require('dotenv').config({ override: true });
 const express = require('express');
 const path = require('path');
 const { query, ready } = require('./database');
@@ -204,6 +206,32 @@ app.post('/api/history', async (req, res) => {
   } catch (e) { dbError(res, e); }
 });
 
+// ─── Health / diagnostics ────────────────────────────────────────────────────
+// Returns config presence (not values) and DB connectivity. Lets us debug
+// production without leaking secrets.
+
+app.get('/api/health', async (req, res) => {
+  const out = {
+    ok: true,
+    env: {
+      DATABASE_URL: !!process.env.DATABASE_URL,
+      ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
+      NODE_ENV: process.env.NODE_ENV || 'unset',
+      VERCEL: !!process.env.VERCEL,
+      RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT || null,
+    },
+    db: { connected: false, error: null },
+  };
+  try {
+    const r = await query('SELECT 1 AS ok');
+    out.db.connected = r.rows[0].ok === 1;
+  } catch (e) {
+    out.ok = false;
+    out.db.error = e.message;
+  }
+  res.json(out);
+});
+
 // ─── Serve frontend for all other routes ─────────────────────────────────────
 
 app.get('*', (req, res) => {
@@ -211,15 +239,16 @@ app.get('*', (req, res) => {
 });
 
 // ─── Start server only when run directly (not when imported by Vercel) ───────
+// Listen immediately so Railway/local sees a healthy port. If DB init fails,
+// we log it but stay up — API routes will return the real error per request,
+// and /api/health can be used to diagnose.
 
 const PORT = process.env.PORT || 3000;
 if (require.main === module) {
-  ready
-    .then(() => app.listen(PORT, () => console.log(`LandDev running → http://localhost:${PORT}`)))
-    .catch(err => {
-      console.error('Failed to start:', err.message);
-      process.exit(1);
-    });
+  app.listen(PORT, () => console.log(`LandDev running → http://localhost:${PORT}`));
+  ready.catch(err => {
+    console.error('⚠  DB init failed (server still listening):', err.message);
+  });
 }
 
 module.exports = app;

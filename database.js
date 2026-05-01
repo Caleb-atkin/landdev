@@ -1,16 +1,24 @@
 // Postgres connection — works locally with any Postgres + on Neon/Railway/Vercel
 const { Pool } = require('pg');
 
-if (!process.env.DATABASE_URL) {
+const HAS_URL = !!process.env.DATABASE_URL;
+if (!HAS_URL) {
   console.warn('⚠  DATABASE_URL not set — set it in .env or your hosting dashboard.');
 }
 
 // Detect local Postgres (no SSL) vs hosted (SSL required)
-const isLocal = process.env.DATABASE_URL && /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL);
+const isLocal = HAS_URL && /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: isLocal ? false : { rejectUnauthorized: false },
+  // Fail fast in production rather than retrying forever
+  connectionTimeoutMillis: 8000,
+});
+
+// Surface pool errors instead of crashing the process (important for serverless)
+pool.on('error', (err) => {
+  console.error('PG pool error:', err.message);
 });
 
 const SCHEMA = `
@@ -54,11 +62,16 @@ const SCHEMA = `
 `;
 
 // Run the schema once on module load. Idempotent (CREATE TABLE IF NOT EXISTS).
-// Other queries await this promise to avoid race conditions on cold starts.
-const ready = pool.query(SCHEMA).catch(err => {
-  console.error('Schema init failed:', err.message);
-  throw err;
-});
+// If DATABASE_URL is missing, we don't even try — fail clearly per request.
+const ready = HAS_URL
+  ? pool.query(SCHEMA).catch(err => {
+      console.error('Schema init failed:', err.message);
+      throw err;
+    })
+  : Promise.reject(new Error('DATABASE_URL is not configured on this server'));
+
+// Suppress "unhandled rejection" if no one awaits ready before a route fires
+ready.catch(() => {});
 
 async function query(text, params) {
   await ready;

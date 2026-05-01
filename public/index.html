@@ -562,7 +562,7 @@ async function doAICall(co){
     var res=await fetch("/api/ai-check",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,messages:[{role:"user",content:prompt}]})
+      body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:700,messages:[{role:"user",content:prompt}]})
     });
     var data=await res.json();
     var txt="";
