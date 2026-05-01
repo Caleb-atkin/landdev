@@ -164,11 +164,51 @@ app.delete('/api/change-orders/:id', async (req, res) => {
 });
 
 // ─── AI Pricing Proxy ─────────────────────────────────────────────────────────
+// When the request body specifies a category, we look up matching historical
+// CO data from the DB and inject it as a system message so Claude grounds
+// its benchmarkCPL in real internal numbers instead of guessing.
+
+async function buildHistoryContext(category) {
+  try {
+    const r = await query(
+      `SELECT category, description, total_cost, lots, year
+       FROM co_history
+       WHERE category = $1 OR $1 IS NULL
+       ORDER BY year DESC
+       LIMIT 30`,
+      [category || null]
+    );
+    if (!r.rows.length) return null;
+    const lines = r.rows.map(h => {
+      const cpl = h.lots > 0 ? Math.round(h.total_cost / h.lots) : 0;
+      return `- ${h.year} | ${h.category} | ${h.description || '—'} | $${h.total_cost.toLocaleString()} total | ${h.lots} lots | $${cpl.toLocaleString()}/lot`;
+    });
+    return `INTERNAL HISTORICAL CHANGE ORDERS (use these to ground your benchmarkCPL):\n${lines.join('\n')}`;
+  } catch (e) {
+    console.warn('history lookup failed:', e.message);
+    return null;
+  }
+}
 
 app.post('/api/ai-check', async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set on server' });
   try {
+    const body = { ...req.body };
+
+    // Detect category from a structured field or by scanning the user message
+    let category = body.category || null;
+    if (!category && Array.isArray(body.messages) && body.messages[0]?.content) {
+      const m = String(body.messages[0].content).match(/Category:\s*([^\n]+)/i);
+      if (m) category = m[1].trim();
+    }
+    delete body.category; // not part of Anthropic API
+
+    const ctx = await buildHistoryContext(category);
+    if (ctx) {
+      body.system = body.system ? `${body.system}\n\n${ctx}` : ctx;
+    }
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -176,7 +216,7 @@ app.post('/api/ai-check', async (req, res) => {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(body),
     });
     const data = await response.json();
     res.json(data);
@@ -202,7 +242,21 @@ app.post('/api/history', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [category, description || '', parseFloat(total_cost) || 0, parseInt(lots) || 0, parseInt(year) || new Date().getFullYear()]
     );
-    res.json({ id: result.rows[0].id, ...req.body });
+    res.json({
+      id: result.rows[0].id,
+      category,
+      description: description || '',
+      total_cost: parseFloat(total_cost) || 0,
+      lots: parseInt(lots) || 0,
+      year: parseInt(year) || new Date().getFullYear(),
+    });
+  } catch (e) { dbError(res, e); }
+});
+
+app.delete('/api/history/:id', async (req, res) => {
+  try {
+    await query('DELETE FROM co_history WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
   } catch (e) { dbError(res, e); }
 });
 

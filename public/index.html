@@ -101,6 +101,7 @@ var state = {
   tab:"projects",
   projects:[],   // [{id, name, phases:[{id, project_id, name, budget, lots}]}]
   cos:[],        // [{id, phaseId, cat, desc, scope, vendor, cost, status, by, date}]
+  history:[],    // [{id, category, description, total_cost, lots, year}]
   selectedProjectId:null,
   selectedPhaseId:null,
   editingCOId:null,
@@ -133,10 +134,12 @@ async function loadAll() {
   try {
     var results = await Promise.all([
       api("GET", "/api/projects"),
-      api("GET", "/api/change-orders")
+      api("GET", "/api/change-orders"),
+      api("GET", "/api/history").catch(function(){return [];})
     ]);
     state.projects = results[0];
     state.cos = results[1];
+    state.history = results[2] || [];
   } catch(e) {
     showToast("Failed to load data");
     console.error(e);
@@ -486,8 +489,9 @@ function renderReports(){
   document.getElementById("header-title").textContent="Reports";
   document.getElementById("header-sub").textContent="Budget summary across all projects";
   var hdr=document.getElementById("header");var eb=hdr.querySelector(".header-back");if(eb)eb.remove();
-  if(state.projects.length===0){return'<div class="page"><div class="empty"><div class="empty-icon">&#128202;</div><div style="font-size:14px;">Add projects to see reports</div></div></div>';}
-  var html='<div class="page">';
+  var benchBtn='<div style="margin-bottom:10px;"><button class="btn btn-outline" style="width:100%;padding:11px;font-size:13px;" onclick="openHistoryManager()">&#128202; Manage AI Benchmark Data ('+state.history.length+' entries)</button></div>';
+  if(state.projects.length===0){return'<div class="page">'+benchBtn+'<div class="empty"><div class="empty-icon">&#128202;</div><div style="font-size:14px;">Add projects to see reports</div></div></div>';}
+  var html='<div class="page">'+benchBtn;
   state.projects.forEach(function(proj){
     var t=projectTotals(proj);
     html+='<div class="card"><div style="font-size:15px;font-weight:600;margin-bottom:10px;">'+esc(proj.name)+'</div>';
@@ -559,10 +563,11 @@ async function doAICall(co){
   var prompt="You are a land development cost estimator. Respond ONLY with valid JSON, no markdown.\n\nCHANGE ORDER:\n- Category: "+co.cat+"\n- Description: "+co.desc+"\n- Scope: "+(co.scope||"Not specified")+"\n- Vendor: "+(co.vendor||"Not specified")+"\n- Total: $"+fmt(co.cost)+" ($"+fmt(Math.round(cpl))+"/lot)\n- Lots in phase: "+lots+"\n\nReturn this exact JSON:\n{\"verdict\":\"reasonable|high|low|review\",\"confidencePercent\":0,\"summary\":\"2-3 sentence verdict\",\"flags\":[\"up to 4 flags\"],\"benchmarkCPL\":0,\"recommendation\":\"one sentence for PM manager\"}";
   try{
     // Route through server proxy so API key stays server-side
+    // Pass category so server can fetch matching historical benchmark data
     var res=await fetch("/api/ai-check",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:700,messages:[{role:"user",content:prompt}]})
+      body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:700,category:co.cat,messages:[{role:"user",content:prompt}]})
     });
     var data=await res.json();
     var txt="";
@@ -587,6 +592,62 @@ async function runAIFromForm(){
 }
 
 function closeAI(){state.aiTarget=null;state.aiResult=null;var el=document.getElementById("ai-modal");if(el)el.remove();}
+
+// ─── Historical Benchmark Data Manager ────────────────────────────────────────
+// Lets the user enter past CO costs so the AI Pricing Check has real internal
+// numbers to ground its benchmarkCPL on instead of just guessing.
+
+function openHistoryManager(){
+  var catOpts=CATS.map(function(c){return'<option>'+c+'</option>';}).join("");
+  var entries=state.history.length===0
+    ? '<div style="text-align:center;padding:18px 8px;color:var(--muted);font-size:13px;">No benchmark entries yet.<br/>Add past change orders below to improve AI accuracy.</div>'
+    : state.history.map(function(h){
+        var cpl=h.lots>0?Math.round(h.total_cost/h.lots):0;
+        return'<div style="border-top:1px solid var(--border);padding:9px 0;display:flex;align-items:flex-start;gap:8px;"><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;line-height:1.3;">'+esc(h.description||h.category)+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+esc(h.category)+' &middot; '+h.year+' &middot; $'+fmt(h.total_cost)+' / '+h.lots+' lots &middot; <strong>$'+fmt(cpl)+'/lot</strong></div></div><button class="btn btn-outline" style="font-size:11px;padding:5px 9px;" onclick="deleteHistory('+h.id+')">Delete</button></div>';
+      }).join("");
+  var thisYear=new Date().getFullYear();
+  openModal(
+    '<div style="font-size:16px;font-weight:600;margin-bottom:4px;">AI Benchmark Data</div>'+
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Past change orders the AI will use as pricing reference.</div>'+
+    '<div style="background:var(--bg);border-radius:10px;padding:11px;margin-bottom:14px;">'+
+      '<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Add entry</div>'+
+      '<div class="form-group" style="margin-bottom:8px;"><label class="form-label">Category</label><select class="form-input" id="h-cat">'+catOpts+'</select></div>'+
+      '<div class="form-group" style="margin-bottom:8px;"><label class="form-label">Description (optional)</label><input class="form-input" id="h-desc" placeholder="e.g. Sewer extension along Main St"/></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;"><div class="form-group" style="margin-bottom:8px;"><label class="form-label">Total Cost ($)</label><input class="form-input" id="h-cost" type="number" inputmode="decimal" placeholder="0"/></div><div class="form-group" style="margin-bottom:8px;"><label class="form-label">Lots</label><input class="form-input" id="h-lots" type="number" inputmode="numeric" placeholder="0"/></div><div class="form-group" style="margin-bottom:8px;"><label class="form-label">Year</label><input class="form-input" id="h-year" type="number" inputmode="numeric" value="'+thisYear+'"/></div></div>'+
+      '<button class="btn btn-primary" style="width:100%;padding:9px;font-size:13px;" onclick="addHistory()">+ Add Entry</button>'+
+    '</div>'+
+    '<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Existing entries ('+state.history.length+')</div>'+
+    entries+
+    '<button class="btn btn-outline btn-big" style="margin-top:14px;" onclick="closeModal()">Close</button>'
+  );
+}
+
+async function addHistory(){
+  var cat=document.getElementById("h-cat").value;
+  var desc=document.getElementById("h-desc").value.trim();
+  var cost=parseFloat(document.getElementById("h-cost").value)||0;
+  var lots=parseInt(document.getElementById("h-lots").value)||0;
+  var year=parseInt(document.getElementById("h-year").value)||new Date().getFullYear();
+  if(!cost||!lots){alert("Please enter total cost and number of lots.");return;}
+  try{
+    var entry=await api("POST","/api/history",{category:cat,description:desc,total_cost:cost,lots:lots,year:year});
+    state.history.unshift(entry);
+    showToast("Benchmark added");
+    closeModal();
+    openHistoryManager();
+  }catch(e){alert("Error: "+e.message);}
+}
+
+async function deleteHistory(id){
+  if(!confirm("Delete this benchmark entry?"))return;
+  try{
+    await api("DELETE","/api/history/"+id);
+    state.history=state.history.filter(function(h){return h.id!==id;});
+    showToast("Deleted");
+    closeModal();
+    openHistoryManager();
+  }catch(e){alert("Error: "+e.message);}
+}
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
