@@ -101,6 +101,7 @@ var state = {
   tab:"projects",
   projects:[],   // [{id, name, phases:[{id, project_id, name, budget, lots}]}]
   cos:[],        // [{id, phaseId, cat, desc, scope, vendor, cost, status, by, date}]
+  coFilter:"all",
   history:[],    // [{id, category, description, total_cost, lots, year}]
   selectedProjectId:null,
   selectedPhaseId:null,
@@ -463,15 +464,38 @@ function renderCOs(){
   document.getElementById("header-sub").textContent=fmt(state.cos.length)+" total";
   var hdr=document.getElementById("header");var eb=hdr.querySelector(".header-back");if(eb)eb.remove();
   if(state.cos.length===0){return'<div class="page"><div class="empty"><div class="empty-icon">&#128203;</div><div style="font-size:15px;font-weight:600;margin-bottom:6px;">No change orders yet</div></div></div>';}
+
+  // Status filter chips
+  var filter=state.coFilter||"all";
+  var counts={all:state.cos.length,draft:0,submitted:0,approved:0,revision:0,rejected:0};
+  state.cos.forEach(function(c){if(counts[c.status]!==undefined)counts[c.status]++;});
+  var chips=[
+    {k:"all",   l:"All",       c:counts.all},
+    {k:"submitted", l:"Submitted", c:counts.submitted},
+    {k:"approved",  l:"Approved",  c:counts.approved},
+    {k:"revision",  l:"Revision",  c:counts.revision},
+    {k:"draft",     l:"Drafts",    c:counts.draft},
+  ];
+  var chipHtml='<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;-webkit-overflow-scrolling:touch;">'+
+    chips.map(function(ch){
+      var active=ch.k===filter;
+      return '<button onclick="setCOFilter(\''+ch.k+'\')" style="flex:0 0 auto;padding:6px 12px;border-radius:18px;border:1px solid '+(active?'var(--blue)':'var(--border)')+';background:'+(active?'var(--blue)':'var(--card)')+';color:'+(active?'#fff':'var(--text)')+';font-size:12px;font-weight:'+(active?'600':'500')+';white-space:nowrap;cursor:pointer;">'+ch.l+' '+ch.c+'</button>';
+    }).join('')+'</div>';
+
+  var visible=filter==="all"?state.cos:state.cos.filter(function(c){return c.status===filter;});
+  if(visible.length===0){
+    return'<div class="page">'+chipHtml+'<div class="empty"><div class="empty-icon">&#128269;</div><div style="font-size:14px;">No change orders match this filter</div></div></div>';
+  }
+
   var grouped={};
-  state.cos.forEach(function(co){
+  visible.forEach(function(co){
     var proj=state.projects.find(function(p){return p.phases.some(function(ph){return ph.id===co.phaseId;});});
     var phase=null;if(proj)phase=getPhase(proj,co.phaseId);
     var key=proj?proj.id:0;
     if(!grouped[key])grouped[key]={projName:proj?proj.name:"Unknown",items:[]};
     grouped[key].items.push({co:co,phase:phase});
   });
-  var html='<div class="page">';
+  var html='<div class="page">'+chipHtml;
   Object.keys(grouped).forEach(function(key){
     var g=grouped[key];html+='<div class="section-title">'+esc(g.projName)+'</div>';
     g.items.forEach(function(item){
@@ -482,6 +506,8 @@ function renderCOs(){
   });
   html+='</div>';return html;
 }
+
+function setCOFilter(k){state.coFilter=k;render();}
 
 // ─── Reports view ─────────────────────────────────────────────────────────────
 
