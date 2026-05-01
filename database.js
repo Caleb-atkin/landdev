@@ -1,4 +1,7 @@
-// Postgres connection — works locally with any Postgres + on Neon/Railway/Vercel
+// Postgres connection — works locally with any Postgres + on Neon/Railway/Vercel.
+// On Vercel (serverless), we auto-rewrite Neon's direct URL to use its pooler
+// host so per-invocation connections survive cold starts and brief idle gaps.
+
 const { Pool } = require('pg');
 
 const HAS_URL = !!process.env.DATABASE_URL;
@@ -6,14 +9,33 @@ if (!HAS_URL) {
   console.warn('⚠  DATABASE_URL not set — set it in .env or your hosting dashboard.');
 }
 
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
 // Detect local Postgres (no SSL) vs hosted (SSL required)
 const isLocal = HAS_URL && /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL);
 
+// If we're on a serverless host and the URL is a Neon direct URL (no -pooler),
+// rewrite the host to point at the pooler. This avoids new TCP handshakes
+// every cold start and the "Connection terminated due to connection timeout"
+// errors that come with auto-suspended Neon computes.
+function ensurePooled(url) {
+  if (!url) return url;
+  if (!/neon\.tech/.test(url)) return url;          // not Neon, leave alone
+  if (/-pooler\./.test(url)) return url;            // already pooled
+  return url.replace(/@(ep-[^.]+)\./, '@$1-pooler.');
+}
+
+const connectionString = IS_SERVERLESS ? ensurePooled(process.env.DATABASE_URL) : process.env.DATABASE_URL;
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
   ssl: isLocal ? false : { rejectUnauthorized: false },
-  // Fail fast in production rather than retrying forever
-  connectionTimeoutMillis: 8000,
+  // Serverless: 1 conn per Lambda is fine and avoids exhausting Neon limits.
+  // Long-running (Railway/local): allow a small pool.
+  max: IS_SERVERLESS ? 1 : 10,
+  idleTimeoutMillis: IS_SERVERLESS ? 0 : 30_000,
+  connectionTimeoutMillis: 15_000,
+  allowExitOnIdle: true,
 });
 
 // Surface pool errors instead of crashing the process (important for serverless)
@@ -73,9 +95,18 @@ const ready = HAS_URL
 // Suppress "unhandled rejection" if no one awaits ready before a route fires
 ready.catch(() => {});
 
+// Retry once on transient connection failures (common on Neon cold start
+// while compute is waking up from auto-suspend).
 async function query(text, params) {
-  await ready;
-  return pool.query(text, params);
+  try {
+    await ready;
+    return await pool.query(text, params);
+  } catch (e) {
+    const transient = /timeout|terminat|ECONN|EAI_AGAIN|reset/i.test(e.message);
+    if (!transient) throw e;
+    console.warn('Retrying after transient DB error:', e.message);
+    return pool.query(text, params);
+  }
 }
 
 module.exports = { pool, query, ready };
