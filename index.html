@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="LandDev"/>
+<meta name="theme-color" content="#185FA5"/>
+<title>LandDev Manager</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#f5f5f3;--card:#fff;--border:#e0dfd8;--text:#1a1a18;--muted:#73726c;
+  --blue:#185FA5;--blue-bg:#E6F1FB;--blue-dark:#042C53;
+  --green:#3B6D11;--green-bg:#EAF3DE;
+  --amber:#BA7517;--amber-bg:#FAEEDA;
+  --red:#A32D2D;--red-bg:#FCEBEB;
+  --nav-h:60px;--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1a;--card:#2a2a28;--border:#3a3a38;--text:#e8e6de;--muted:#888780;
+  --blue-bg:#0c2a45;--blue-dark:#B5D4F4;--green-bg:#1a2e0a;--amber-bg:#2e2008;--red-bg:#2e0a0a;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;min-height:100vh;padding-bottom:calc(var(--nav-h) + var(--safe-b) + 8px);}
+.header{background:var(--blue);color:#fff;padding:14px 16px 12px;padding-top:calc(14px + var(--safe-t));display:flex;align-items:center;gap:10px;}
+.header-back{background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer;}
+.header h1{font-size:17px;font-weight:600;flex:1;}
+.header p{font-size:11px;opacity:0.75;margin-top:1px;}
+.nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:var(--card);border-top:1px solid var(--border);display:flex;z-index:50;padding-bottom:var(--safe-b);}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;cursor:pointer;color:var(--muted);font-size:10px;font-weight:500;}
+.nav-btn.active{color:var(--blue);}
+.nav-icon{font-size:20px;line-height:1;}
+.page{padding:12px;max-width:680px;margin:0 auto;}
+.card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid var(--border);}
+.card-tap{cursor:pointer;transition:opacity .15s;}
+.card-tap:active{opacity:0.7;}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.metric{background:var(--card);border-radius:12px;padding:11px 12px;border:1px solid var(--border);}
+.metric-label{font-size:11px;color:var(--muted);margin-bottom:3px;}
+.metric-val{font-size:19px;font-weight:700;}
+.metric-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.section-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.btn{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:500;border:none;cursor:pointer;white-space:nowrap;}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text);}
+.btn-ai{background:var(--blue-bg);color:var(--blue-dark);border:1px solid rgba(24,95,165,0.25);}
+.btn-primary{background:var(--blue);color:#fff;}
+.btn-success{background:var(--green);color:#fff;}
+.btn-warn{background:var(--amber);color:#fff;}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-big{width:100%;padding:13px;border-radius:10px;font-size:15px;}
+.form-group{margin-bottom:13px;}
+.form-label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;font-weight:500;}
+.form-input{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:15px;font-family:inherit;appearance:none;-webkit-appearance:none;}
+.form-input:focus{outline:none;border-color:var(--blue);}
+textarea.form-input{resize:vertical;min-height:72px;}
+.cpl-bar{background:var(--blue-bg);border-radius:10px;padding:11px 14px;margin-bottom:13px;}
+.cpl-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;}
+.cpl-val{font-size:17px;font-weight:700;}
+.cpl-lbl{font-size:10px;color:var(--muted);margin-top:2px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:flex;align-items:flex-end;}
+.modal{background:var(--card);border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:85vh;overflow-y:auto;padding-bottom:calc(20px + var(--safe-b));}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
+.flag-item{padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;display:flex;gap:8px;}
+.rec-box{background:var(--blue-bg);border-radius:8px;padding:11px 12px;font-size:13px;color:var(--blue-dark);margin-top:12px;}
+.empty{text-align:center;padding:48px 20px;color:var(--muted);}
+.empty-icon{font-size:44px;margin-bottom:10px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spinner{width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:20px auto;}
+.toast{position:fixed;bottom:calc(var(--nav-h) + var(--safe-b) + 12px);left:50%;transform:translateX(-50%);background:#1a1a18ee;color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;z-index:200;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .25s;}
+.toast.show{opacity:1;}
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:6px;}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s;}
+.loading-page{display:flex;align-items:center;justify-content:center;min-height:40vh;flex-direction:column;gap:12px;color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="header" id="header">
+  <div>
+    <h1 id="header-title">Projects</h1>
+    <p id="header-sub">Land Development Manager</p>
+  </div>
+</div>
+<div id="app"><div class="loading-page"><div class="spinner"></div><span style="font-size:13px;">Loading...</span></div></div>
+<nav class="nav">
+  <button class="nav-btn active" id="nav-projects" onclick="switchTab('projects')"><div class="nav-icon">&#127968;</div>Projects</button>
+  <button class="nav-btn" id="nav-cos" onclick="switchTab('cos')"><div class="nav-icon">&#128203;</div>Change Orders</button>
+  <button class="nav-btn" id="nav-new" onclick="switchTab('new')"><div class="nav-icon">&#10133;</div>New CO</button>
+  <button class="nav-btn" id="nav-history" onclick="switchTab('history')"><div class="nav-icon">&#128202;</div>Reports</button>
+</nav>
+<div class="toast" id="toast"></div>
+<script>
+var CATS = ["Grading and Earthwork","Underground Utilities","Roads and Paving","Landscaping and Amenities","Retaining Walls","Drainage and Erosion Control","Wet Utilities","Dry Utilities","Surveying and Engineering","Environmental Remediation","Other"];
+var STATUS_LABELS = {draft:"Draft",submitted:"Submitted",approved:"Approved",revision:"Needs Revision",rejected:"Rejected"};
+var STATUS_COLORS = {draft:["#73726c","#f1efe8"],submitted:["#185FA5","#E6F1FB"],approved:["#3B6D11","#EAF3DE"],revision:["#BA7517","#FAEEDA"],rejected:["#A32D2D","#FCEBEB"]};
+
+var state = {
+  tab:"projects",
+  projects:[],   // [{id, name, phases:[{id, project_id, name, budget, lots}]}]
+  cos:[],        // [{id, phaseId, cat, desc, scope, vendor, cost, status, by, date}]
+  selectedProjectId:null,
+  selectedPhaseId:null,
+  editingCOId:null,
+  aiTarget:null,aiResult:null,aiLoading:false,
+  coForm:null,
+};
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function fmt(n){return Number(n||0).toLocaleString();}
+function fmtM(n){return n>=1000000?"$"+(n/1000000).toFixed(2)+"M":"$"+(n/1000).toFixed(0)+"K";}
+function badge(status){var c=STATUS_COLORS[status]||["#888","#eee"];return'<span class="badge" style="color:'+c[0]+';background:'+c[1]+';">'+STATUS_LABELS[status]+"</span>";}
+function showToast(msg){var el=document.getElementById("toast");el.textContent=msg;el.classList.add("show");setTimeout(function(){el.classList.remove("show");},2400);}
+
+// ─── API helpers ──────────────────────────────────────────────────────────────
+
+async function api(method, path, body) {
+  var opts = {method:method, headers:{"Content-Type":"application/json"}};
+  if(body) opts.body = JSON.stringify(body);
+  var res = await fetch(path, opts);
+  if(!res.ok) {
+    var err = await res.json().catch(function(){return{error:"Request failed"};});
+    throw new Error(err.error || "Request failed");
+  }
+  return res.json();
+}
+
+async function loadAll() {
+  try {
+    var results = await Promise.all([
+      api("GET", "/api/projects"),
+      api("GET", "/api/change-orders")
+    ]);
+    state.projects = results[0];
+    state.cos = results[1];
+  } catch(e) {
+    showToast("Failed to load data");
+    console.error(e);
+  }
+}
+
+// ─── Computed helpers ─────────────────────────────────────────────────────────
+
+function getProject(id){return state.projects.find(function(p){return p.id===id;});}
+function getPhase(proj,id){return(proj.phases||[]).find(function(ph){return ph.id===id;});}
+function phaseCOs(phaseId){return state.cos.filter(function(c){return c.phaseId===phaseId;});}
+function phaseApprovedCost(phaseId){return phaseCOs(phaseId).filter(function(c){return c.status==="approved";}).reduce(function(s,c){return s+c.cost;},0);}
+function phasePendingCost(phaseId){return phaseCOs(phaseId).filter(function(c){return c.status==="submitted"||c.status==="draft";}).reduce(function(s,c){return s+c.cost;},0);}
+function phaseCPL(phase){if(!phase.lots||phase.lots===0)return 0;return(phase.budget+phaseApprovedCost(phase.id))/phase.lots;}
+function projectTotals(proj){var totalBudget=0,totalApproved=0,totalPending=0,totalLots=0;(proj.phases||[]).forEach(function(ph){totalBudget+=ph.budget;totalApproved+=phaseApprovedCost(ph.id);totalPending+=phasePendingCost(ph.id);totalLots+=ph.lots;});return{totalBudget:totalBudget,totalApproved:totalApproved,totalPending:totalPending,totalLots:totalLots};}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+
+function switchTab(t){
+  state.tab=t;
+  if(t!=="new"){state.editingCOId=null;state.coForm=null;}
+  render();
+}
+
+function render(){
+  document.querySelectorAll(".nav-btn").forEach(function(b){b.classList.remove("active");});
+  var nb=document.getElementById("nav-"+state.tab);if(nb)nb.classList.add("active");
+  var views={projects:renderProjects,cos:renderCOs,new:renderCOForm,history:renderReports};
+  var fn=views[state.tab]||renderProjects;
+  document.getElementById("app").innerHTML=fn();
+  if(state.aiTarget)renderAIModal();
+}
+
+function openProject(id){state.selectedProjectId=id;state.selectedPhaseId=null;renderProjectDetail();}
+function openPhase(phaseId){state.selectedPhaseId=phaseId;renderPhaseDetail();}
+
+function updateHeader(showBack, backTo){
+  var header=document.getElementById("header");
+  var existing=header.querySelector(".header-back");if(existing)existing.remove();
+  if(showBack){
+    var btn=document.createElement("button");
+    btn.className="header-back";
+    btn.textContent=backTo==="phase"?"Back":"Projects";
+    btn.onclick=function(){
+      if(backTo==="phase"){state.selectedPhaseId=null;renderProjectDetail();}
+      else{state.selectedProjectId=null;state.selectedPhaseId=null;switchTab("projects");}
+    };
+    header.insertBefore(btn,header.firstChild);
+  }
+}
+
+// ─── Modal helpers ────────────────────────────────────────────────────────────
+
+function openModal(html){
+  closeModal();
+  var overlay=document.createElement("div");
+  overlay.className="modal-overlay";
+  overlay.id="main-modal";
+  overlay.addEventListener("click",function(e){if(e.target===overlay)closeModal();});
+  overlay.innerHTML='<div class="modal"><div class="modal-handle"></div>'+html+'</div>';
+  document.body.appendChild(overlay);
+}
+function closeModal(){var el=document.getElementById("main-modal");if(el)el.remove();}
+
+// ─── Projects view ────────────────────────────────────────────────────────────
+
+function renderProjects(){
+  document.getElementById("header-title").textContent="Projects";
+  document.getElementById("header-sub").textContent="Land Development Manager";
+  var hdr=document.getElementById("header");var eb=hdr.querySelector(".header-back");if(eb)eb.remove();
+  if(state.projects.length===0){
+    return'<div class="page"><div class="empty"><div class="empty-icon">&#127968;</div><div style="font-size:16px;font-weight:600;margin-bottom:6px;">No projects yet</div><div style="font-size:13px;margin-bottom:20px;">Add your first project to get started</div><button class="btn btn-primary" style="padding:11px 24px;border-radius:10px;font-size:14px;" onclick="openAddProject()">+ Add Project</button></div></div>';
+  }
+  var cards=state.projects.map(function(proj){
+    var t=projectTotals(proj);
+    var pct=t.totalBudget>0?Math.min(100,((t.totalBudget+t.totalApproved)/t.totalBudget*100)):0;
+    var barColor=pct>110?"var(--red)":pct>95?"var(--amber)":"var(--green)";
+    return'<div class="card card-tap" onclick="openProject('+proj.id+')"><div class="row"><div style="flex:1;"><div style="font-size:15px;font-weight:600;margin-bottom:2px;">'+esc(proj.name)+'</div><div style="font-size:12px;color:var(--muted);">'+proj.phases.length+' phase'+(proj.phases.length!==1?'s':'')+' &middot; '+fmt(t.totalLots)+' total lots</div></div><div style="text-align:right;"><div style="font-size:16px;font-weight:700;">'+fmtM(t.totalBudget)+'</div><div style="font-size:11px;color:var(--muted);">total budget</div></div></div>'+(t.totalApproved>0?'<div class="progress-bar"><div class="progress-fill" style="width:'+Math.min(100,pct)+'%;background:'+barColor+';"></div></div><div style="font-size:11px;color:var(--muted);margin-top:4px;">'+fmtM(t.totalApproved)+' in approved COs</div>':'')+'</div>';
+  }).join("");
+  return'<div class="page"><div class="section-title">Your projects</div>'+cards+'<button class="btn btn-primary btn-big" onclick="openAddProject()">+ Add Project</button></div>';
+}
+
+function renderProjectDetail(){
+  var proj=getProject(state.selectedProjectId);if(!proj){switchTab("projects");return;}
+  var t=projectTotals(proj);
+  document.getElementById("header-title").textContent=esc(proj.name);
+  document.getElementById("header-sub").textContent=fmt(t.totalLots)+" total lots &middot; "+proj.phases.length+" phases";
+  updateHeader(true,"projects");
+  var phaseCards=proj.phases.length===0
+    ?'<div class="empty"><div class="empty-icon">&#128336;</div><div style="font-size:14px;margin-bottom:12px;">No phases yet</div></div>'
+    :proj.phases.map(function(ph){
+        var approved=phaseApprovedCost(ph.id),pending=phasePendingCost(ph.id),cpl=phaseCPL(ph);
+        var pct=ph.budget>0?Math.min(100,((ph.budget+approved)/ph.budget*100)):0;
+        var barColor=pct>110?"var(--red)":pct>95?"var(--amber)":"var(--green)";
+        var coCount=phaseCOs(ph.id).length;
+        return'<div class="card card-tap" onclick="openPhase('+ph.id+')"><div class="row"><div style="flex:1;"><div style="font-size:14px;font-weight:600;margin-bottom:2px;">'+esc(ph.name)+'</div><div style="font-size:12px;color:var(--muted);">'+fmt(ph.lots)+' lots &middot; '+coCount+' change order'+(coCount!==1?'s':'')+'</div></div><div style="text-align:right;"><div style="font-size:15px;font-weight:700;">'+fmtM(ph.budget)+'</div><div style="font-size:11px;color:var(--muted);">$'+fmt(Math.round(cpl))+'/lot</div></div></div><div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%;background:'+barColor+';"></div></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px;"><span>Budget: '+fmtM(ph.budget)+'</span>'+(approved>0?'<span style="color:var(--green);">+'+fmtM(approved)+' approved</span>':'')+(pending>0?'<span style="color:var(--amber);">+'+fmtM(pending)+' pending</span>':'')+'</div></div>';
+      }).join("");
+  document.getElementById("app").innerHTML='<div class="page"><div class="metric-grid"><div class="metric"><div class="metric-label">Total budget</div><div class="metric-val">'+fmtM(t.totalBudget)+'</div><div class="metric-sub">'+fmt(t.totalLots)+' lots across all phases</div></div><div class="metric"><div class="metric-label">Approved COs</div><div class="metric-val" style="color:var(--green);">'+fmtM(t.totalApproved)+'</div><div class="metric-sub">'+(t.totalApproved>0?fmtM(t.totalBudget+t.totalApproved)+' adjusted':'no approved COs yet')+'</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="section-title" style="margin-bottom:0;">Phases</div><button class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="openAddPhase()">+ Add Phase</button></div>'+phaseCards+'<div style="display:flex;gap:8px;margin-top:4px;"><button class="btn btn-outline" style="flex:1;padding:10px;" onclick="openEditProject()">Edit Project</button><button class="btn btn-danger" style="flex:1;padding:10px;" onclick="deleteProject('+proj.id+')">Delete Project</button></div></div>';
+}
+
+function renderPhaseDetail(){
+  var proj=getProject(state.selectedProjectId);var phase=getPhase(proj,state.selectedPhaseId);
+  if(!proj||!phase){renderProjectDetail();return;}
+  var approved=phaseApprovedCost(phase.id),pending=phasePendingCost(phase.id),cpl=phaseCPL(phase);
+  var pendCPL=phase.lots>0?pending/phase.lots:0;var coList=phaseCOs(phase.id);
+  document.getElementById("header-title").textContent=esc(phase.name);
+  document.getElementById("header-sub").textContent=esc(proj.name)+" &middot; "+fmt(phase.lots)+" lots";
+  updateHeader(true,"phase");
+  var coCards=coList.length===0
+    ?'<div class="empty"><div class="empty-icon">&#128203;</div><div style="font-size:14px;">No change orders for this phase yet</div></div>'
+    :coList.map(function(co){
+        var btns='<button class="btn btn-outline" onclick="editCO('+co.id+')">Edit</button><button class="btn btn-ai" onclick="runAI('+co.id+')">AI Check</button>';
+        if(co.status==="draft")btns+='<button class="btn btn-primary" onclick="advanceCO('+co.id+')">Submit</button>';
+        if(co.status==="submitted")btns+='<button class="btn btn-success" onclick="approveCO('+co.id+')">Approve</button><button class="btn btn-warn" onclick="reviseCO('+co.id+')">Revise</button>';
+        if(co.status==="revision")btns+='<button class="btn btn-primary" onclick="advanceCO('+co.id+')">Resubmit</button>';
+        return'<div class="card"><div class="row" style="margin-bottom:6px;"><div style="flex:1;"><div style="font-size:14px;font-weight:600;line-height:1.3;margin-bottom:3px;">'+esc(co.desc)+'</div><div style="font-size:11px;color:var(--muted);">'+esc(co.cat)+' &middot; '+co.date+'</div></div><div style="text-align:right;"><div style="font-size:16px;font-weight:700;">$'+fmt(co.cost)+'</div><div style="font-size:11px;color:var(--muted);">$'+fmt(Math.round(co.cost/phase.lots))+'/lot</div></div></div>'+badge(co.status)+' <span style="font-size:11px;color:var(--muted);margin-left:5px;">'+esc(co.by)+'</span><div class="actions">'+btns+'</div></div>';
+      }).join("");
+  document.getElementById("app").innerHTML='<div class="page"><div class="metric-grid"><div class="metric"><div class="metric-label">Cost per lot</div><div class="metric-val" style="color:var(--blue);">$'+fmt(Math.round(cpl))+'</div><div class="metric-sub">approved COs included</div></div><div class="metric"><div class="metric-label">Pending CO impact</div><div class="metric-val" style="color:var(--amber);">+$'+fmt(Math.round(pendCPL))+'</div><div class="metric-sub">per lot if all approved</div></div><div class="metric"><div class="metric-label">Phase budget</div><div class="metric-val">'+fmtM(phase.budget)+'</div><div class="metric-sub">'+fmt(phase.lots)+' lots</div></div><div class="metric"><div class="metric-label">Approved COs</div><div class="metric-val" style="color:var(--green);">'+fmtM(approved)+'</div><div class="metric-sub">'+(approved>0?'adjusted: '+fmtM(phase.budget+approved):'no approvals yet')+'</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="section-title" style="margin-bottom:0;">Change orders</div><button class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="newCOForPhase('+phase.id+')">+ New CO</button></div>'+coCards+'<div style="display:flex;gap:8px;margin-top:4px;"><button class="btn btn-outline" style="flex:1;padding:10px;" onclick="openEditPhase('+phase.id+')">Edit Phase</button><button class="btn btn-danger" style="flex:1;padding:10px;" onclick="deletePhase('+proj.id+','+phase.id+')">Delete Phase</button></div></div>';
+}
+
+// ─── Project CRUD ─────────────────────────────────────────────────────────────
+
+function openAddProject(){
+  openModal('<div style="font-size:16px;font-weight:600;margin-bottom:16px;">New Project</div><div class="form-group"><label class="form-label">Project Name</label><input class="form-input" id="m-name" placeholder="e.g. Meadow Creek" /></div><button class="btn btn-primary btn-big" onclick="saveNewProject()">Create Project</button><button class="btn btn-outline btn-big" style="margin-top:8px;" onclick="closeModal()">Cancel</button>');
+}
+
+async function saveNewProject(){
+  var name=document.getElementById("m-name").value.trim();
+  if(!name){alert("Please enter a project name.");return;}
+  try{
+    var proj=await api("POST","/api/projects",{name:name});
+    state.projects.push(proj);
+    closeModal();showToast("Project created");render();
+  }catch(e){alert("Error: "+e.message);}
+}
+
+function openEditProject(){
+  var proj=getProject(state.selectedProjectId);if(!proj)return;
+  openModal('<div style="font-size:16px;font-weight:600;margin-bottom:16px;">Edit Project</div><div class="form-group"><label class="form-label">Project Name</label><input class="form-input" id="m-name" value="'+esc(proj.name)+'" /></div><button class="btn btn-primary btn-big" onclick="saveEditProject('+proj.id+')">Save</button><button class="btn btn-outline btn-big" style="margin-top:8px;" onclick="closeModal()">Cancel</button>');
+}
+
+async function saveEditProject(id){
+  var name=document.getElementById("m-name").value.trim();
+  if(!name){alert("Please enter a project name.");return;}
+  try{
+    await api("PUT","/api/projects/"+id,{name:name});
+    state.projects=state.projects.map(function(p){return p.id===id?Object.assign({},p,{name:name}):p;});
+    closeModal();showToast("Project updated");renderProjectDetail();
+  }catch(e){alert("Error: "+e.message);}
+}
+
+async function deleteProject(id){
+  if(!confirm("Delete this project and all its phases and change orders?"))return;
+  try{
+    await api("DELETE","/api/projects/"+id);
+    state.projects=state.projects.filter(function(p){return p.id!==id;});
+    var phaseIds=[];
+    state.projects.forEach(function(p){p.phases.forEach(function(ph){phaseIds.push(ph.id);});});
+    state.cos=state.cos.filter(function(c){return phaseIds.indexOf(c.phaseId)!==-1;});
+    // Reload to ensure consistency
+    await loadAll();
+    state.selectedProjectId=null;
+    showToast("Project deleted");switchTab("projects");
+  }catch(e){alert("Error: "+e.message);}
+}
+
+// ─── Phase CRUD ───────────────────────────────────────────────────────────────
+
+function openAddPhase(){
+  openModal('<div style="font-size:16px;font-weight:600;margin-bottom:16px;">Add Phase</div><div class="form-group"><label class="form-label">Phase Name</label><input class="form-input" id="m-pname" placeholder="e.g. Phase 1" /></div><div class="form-group"><label class="form-label">Budget ($)</label><input class="form-input" id="m-budget" type="number" inputmode="decimal" placeholder="0.00" /></div><div class="form-group"><label class="form-label">Number of Lots</label><input class="form-input" id="m-lots" type="number" inputmode="numeric" placeholder="0" /></div><button class="btn btn-primary btn-big" onclick="saveNewPhase()">Add Phase</button><button class="btn btn-outline btn-big" style="margin-top:8px;" onclick="closeModal()">Cancel</button>');
+}
+
+async function saveNewPhase(){
+  var name=document.getElementById("m-pname").value.trim();
+  var budget=parseFloat(document.getElementById("m-budget").value)||0;
+  var lots=parseInt(document.getElementById("m-lots").value)||0;
+  if(!name){alert("Please enter a phase name.");return;}
+  if(!budget){alert("Please enter a budget.");return;}
+  if(!lots){alert("Please enter the number of lots.");return;}
+  try{
+    var ph=await api("POST","/api/projects/"+state.selectedProjectId+"/phases",{name:name,budget:budget,lots:lots});
+    var proj=getProject(state.selectedProjectId);if(proj)proj.phases.push(ph);
+    closeModal();showToast("Phase added");renderProjectDetail();
+  }catch(e){alert("Error: "+e.message);}
+}
+
+function openEditPhase(phaseId){
+  var proj=getProject(state.selectedProjectId);var phase=getPhase(proj,phaseId);if(!phase)return;
+  openModal('<div style="font-size:16px;font-weight:600;margin-bottom:16px;">Edit Phase</div><div class="form-group"><label class="form-label">Phase Name</label><input class="form-input" id="m-pname" value="'+esc(phase.name)+'" /></div><div class="form-group"><label class="form-label">Budget ($)</label><input class="form-input" id="m-budget" type="number" inputmode="decimal" value="'+phase.budget+'" /></div><div class="form-group"><label class="form-label">Number of Lots</label><input class="form-input" id="m-lots" type="number" inputmode="numeric" value="'+phase.lots+'" /></div><button class="btn btn-primary btn-big" onclick="saveEditPhase('+phaseId+')">Save</button><button class="btn btn-outline btn-big" style="margin-top:8px;" onclick="closeModal()">Cancel</button>');
+}
+
+async function saveEditPhase(phaseId){
+  var name=document.getElementById("m-pname").value.trim();
+  var budget=parseFloat(document.getElementById("m-budget").value)||0;
+  var lots=parseInt(document.getElementById("m-lots").value)||0;
+  if(!name||!budget||!lots){alert("Please fill in all fields.");return;}
+  try{
+    await api("PUT","/api/phases/"+phaseId,{name:name,budget:budget,lots:lots});
+    var proj=getProject(state.selectedProjectId);
+    proj.phases=proj.phases.map(function(ph){return ph.id===phaseId?Object.assign({},ph,{name:name,budget:budget,lots:lots}):ph;});
+    closeModal();showToast("Phase updated");renderPhaseDetail();
+  }catch(e){alert("Error: "+e.message);}
+}
+
+async function deletePhase(projId,phaseId){
+  if(!confirm("Delete this phase and all its change orders?"))return;
+  try{
+    await api("DELETE","/api/phases/"+phaseId);
+    var proj=getProject(projId);
+    proj.phases=proj.phases.filter(function(ph){return ph.id!==phaseId;});
+    state.cos=state.cos.filter(function(c){return c.phaseId!==phaseId;});
+    state.selectedPhaseId=null;
+    showToast("Phase deleted");renderProjectDetail();
+  }catch(e){alert("Error: "+e.message);}
+}
+
+// ─── Change Order Form ────────────────────────────────────────────────────────
+
+function blankCOForm(phaseId){return{phaseId:phaseId||null,cat:"Grading and Earthwork",desc:"",scope:"",vendor:"",cost:"",by:"",date:new Date().toISOString().slice(0,10)};}
+function newCOForPhase(phaseId){state.coForm=blankCOForm(phaseId);state.editingCOId=null;switchTab("new");}
+
+function renderCOForm(){
+  if(!state.coForm)state.coForm=blankCOForm(null);
+  var f=state.coForm;
+  document.getElementById("header-title").textContent=state.editingCOId?"Edit Change Order":"New Change Order";
+  document.getElementById("header-sub").textContent="";
+  var hdr=document.getElementById("header");var eb=hdr.querySelector(".header-back");if(eb)eb.remove();
+  var allPhases=[];
+  state.projects.forEach(function(proj){proj.phases.forEach(function(ph){allPhases.push({projName:proj.name,phase:ph});});});
+  if(allPhases.length===0){
+    return'<div class="page"><div class="empty"><div class="empty-icon">&#128336;</div><div style="font-size:15px;font-weight:600;margin-bottom:6px;">No phases yet</div><div style="font-size:13px;margin-bottom:20px;">Add a project and phase first.</div><button class="btn btn-primary" style="padding:11px 24px;border-radius:10px;" onclick="switchTab(\'projects\')">Go to Projects</button></div></div>';
+  }
+  var phaseOpts=allPhases.map(function(item){return'<option value="'+item.phase.id+'"'+(f.phaseId===item.phase.id?" selected":"")+'>'+esc(item.projName)+' — '+esc(item.phase.name)+'</option>';}).join("");
+  var selectedPhase=allPhases.find(function(item){return item.phase.id===f.phaseId;});
+  var cost=parseFloat(f.cost)||0,cpl=0,newCPL=0,pct=0;
+  if(selectedPhase&&cost>0&&selectedPhase.phase.lots>0){
+    cpl=cost/selectedPhase.phase.lots;
+    newCPL=phaseCPL(selectedPhase.phase)+cpl;
+    var baseCPL=phaseCPL(selectedPhase.phase);
+    pct=baseCPL>0?(cpl/baseCPL*100):0;
+  }
+  var cplSection=(cost>0&&selectedPhase)
+    ?'<div class="cpl-bar"><div style="font-size:11px;color:var(--blue-dark);font-weight:600;margin-bottom:8px;">LIVE COST / LOT IMPACT — '+esc(selectedPhase.phase.name)+'</div><div class="cpl-grid"><div><div class="cpl-val" style="color:var(--amber);">+$'+fmt(Math.round(cpl))+'</div><div class="cpl-lbl">This CO</div></div><div><div class="cpl-val" style="color:var(--blue);">$'+fmt(Math.round(newCPL))+'</div><div class="cpl-lbl">New CPL</div></div><div><div class="cpl-val" style="color:'+(pct>5?"var(--red)":"var(--green)")+';">+'+pct.toFixed(1)+'%</div><div class="cpl-lbl">Phase Budget</div></div></div></div>'
+    :'<div style="background:var(--blue-bg);border-radius:10px;padding:11px 14px;margin-bottom:13px;font-size:13px;color:var(--blue-dark);">Select a phase and enter a cost to see real-time cost per lot impact</div>';
+  var catOpts=CATS.map(function(c){return'<option'+(c===f.cat?" selected":"")+'>'+c+'</option>';}).join("");
+  var canSave=f.desc&&f.cost&&f.phaseId;
+  return'<div class="page">'+cplSection+'<div class="card"><div class="form-group"><label class="form-label">Project Phase</label><select class="form-input" onchange="ufco(\'phaseId\',parseInt(this.value))">'+phaseOpts+'</select></div><div class="form-group"><label class="form-label">Description</label><input class="form-input" value="'+esc(f.desc)+'" placeholder="Brief description of the change" oninput="ufco(\'desc\',this.value)"/></div><div class="form-group"><label class="form-label">Category</label><select class="form-input" onchange="ufco(\'cat\',this.value)">'+catOpts+'</select></div><div class="form-group"><label class="form-label">Total Cost ($)</label><input class="form-input" type="number" inputmode="decimal" value="'+(f.cost||"")+'" placeholder="0.00" oninput="ufco(\'cost\',this.value)"/></div><div class="form-group"><label class="form-label">Vendor / Contractor</label><input class="form-input" value="'+esc(f.vendor)+'" placeholder="Company name" oninput="ufco(\'vendor\',this.value)"/></div><div class="form-group"><label class="form-label">Scope of Work</label><textarea class="form-input" oninput="ufco(\'scope\',this.value)" placeholder="Scope, quantities, drawing references">'+esc(f.scope)+'</textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="form-group"><label class="form-label">Submitted by</label><input class="form-input" value="'+esc(f.by)+'" placeholder="Your name" oninput="ufco(\'by\',this.value)"/></div><div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" value="'+f.date+'" oninput="ufco(\'date\',this.value)"/></div></div></div><button class="btn btn-ai btn-big" style="margin-bottom:8px;"'+(canSave?'':' disabled')+' onclick="runAIFromForm()">&#10024; Run AI Pricing Check</button><button class="btn btn-primary btn-big"'+(canSave?'':' disabled')+' onclick="saveCO()">Save Change Order</button>'+(state.editingCOId?'<button class="btn btn-outline btn-big" style="margin-top:8px;" onclick="cancelEditCO()">Cancel</button>':'')+'</div>';
+}
+
+function ufco(k,v){state.coForm[k]=v;if(k==="cost"||k==="phaseId")render();}
+
+async function saveCO(){
+  var f=state.coForm;if(!f.desc||!f.cost||!f.phaseId)return;
+  var payload={phaseId:f.phaseId,cat:f.cat,desc:f.desc,scope:f.scope,vendor:f.vendor,cost:parseFloat(f.cost)||0,by:f.by,date:f.date};
+  try{
+    if(state.editingCOId){
+      var existing=state.cos.find(function(c){return c.id===state.editingCOId;});
+      var updatePayload=Object.assign({},existing,payload,{status:existing?existing.status:"draft"});
+      await api("PUT","/api/change-orders/"+state.editingCOId,updatePayload);
+      state.cos=state.cos.map(function(c){return c.id===state.editingCOId?Object.assign({},c,payload):c;});
+      var targetPhaseId=payload.phaseId;
+      state.editingCOId=null;state.coForm=null;
+      showToast("Change order updated");
+      state.selectedPhaseId=targetPhaseId;
+      var proj=state.projects.find(function(p){return p.phases.some(function(ph){return ph.id===targetPhaseId;});});
+      if(proj){state.selectedProjectId=proj.id;renderPhaseDetail();}else switchTab("cos");
+    }else{
+      var co=await api("POST","/api/change-orders",payload);
+      state.cos.unshift(co);
+      state.coForm=null;
+      showToast("Change order saved");
+      state.selectedPhaseId=co.phaseId;
+      var proj2=state.projects.find(function(p){return p.phases.some(function(ph){return ph.id===co.phaseId;});});
+      if(proj2){state.selectedProjectId=proj2.id;renderPhaseDetail();}else switchTab("cos");
+    }
+  }catch(e){alert("Error: "+e.message);}
+}
+
+function cancelEditCO(){state.editingCOId=null;state.coForm=null;switchTab("cos");}
+
+function editCO(id){
+  var co=state.cos.find(function(c){return c.id===id;});if(!co)return;
+  state.editingCOId=id;
+  state.coForm={phaseId:co.phaseId,cat:co.cat,desc:co.desc,scope:co.scope||"",vendor:co.vendor||"",cost:co.cost,by:co.by,date:co.date};
+  switchTab("new");
+}
+
+async function advanceCO(id){
+  var co=state.cos.find(function(c){return c.id===id;});if(!co)return;
+  var map={draft:"submitted",revision:"submitted"};
+  var newStatus=map[co.status]||co.status;
+  try{
+    await api("PUT","/api/change-orders/"+id,Object.assign({},co,{status:newStatus}));
+    state.cos=state.cos.map(function(c){return c.id===id?Object.assign({},c,{status:newStatus}):c;});
+    showToast("Submitted for approval");renderPhaseDetail();
+  }catch(e){alert("Error: "+e.message);}
+}
+
+async function approveCO(id){
+  var co=state.cos.find(function(c){return c.id===id;});if(!co)return;
+  try{
+    await api("PUT","/api/change-orders/"+id,Object.assign({},co,{status:"approved"}));
+    state.cos=state.cos.map(function(c){return c.id===id?Object.assign({},c,{status:"approved"}):c;});
+    showToast("Approved");renderPhaseDetail();
+  }catch(e){alert("Error: "+e.message);}
+}
+
+async function reviseCO(id){
+  var co=state.cos.find(function(c){return c.id===id;});if(!co)return;
+  try{
+    await api("PUT","/api/change-orders/"+id,Object.assign({},co,{status:"revision"}));
+    state.cos=state.cos.map(function(c){return c.id===id?Object.assign({},c,{status:"revision"}):c;});
+    showToast("Sent back for revision");renderPhaseDetail();
+  }catch(e){alert("Error: "+e.message);}
+}
+
+// ─── All Change Orders view ───────────────────────────────────────────────────
+
+function renderCOs(){
+  document.getElementById("header-title").textContent="All Change Orders";
+  document.getElementById("header-sub").textContent=fmt(state.cos.length)+" total";
+  var hdr=document.getElementById("header");var eb=hdr.querySelector(".header-back");if(eb)eb.remove();
+  if(state.cos.length===0){return'<div class="page"><div class="empty"><div class="empty-icon">&#128203;</div><div style="font-size:15px;font-weight:600;margin-bottom:6px;">No change orders yet</div></div></div>';}
+  var grouped={};
+  state.cos.forEach(function(co){
+    var proj=state.projects.find(function(p){return p.phases.some(function(ph){return ph.id===co.phaseId;});});
+    var phase=null;if(proj)phase=getPhase(proj,co.phaseId);
+    var key=proj?proj.id:0;
+    if(!grouped[key])grouped[key]={projName:proj?proj.name:"Unknown",items:[]};
+    grouped[key].items.push({co:co,phase:phase});
+  });
+  var html='<div class="page">';
+  Object.keys(grouped).forEach(function(key){
+    var g=grouped[key];html+='<div class="section-title">'+esc(g.projName)+'</div>';
+    g.items.forEach(function(item){
+      var co=item.co,phase=item.phase;
+      var cplImpact=phase&&phase.lots>0?Math.round(co.cost/phase.lots):0;
+      html+='<div class="card"><div class="row" style="margin-bottom:5px;"><div style="flex:1;"><div style="font-size:14px;font-weight:600;margin-bottom:2px;">'+esc(co.desc)+'</div><div style="font-size:11px;color:var(--muted);">'+(phase?esc(phase.name)+" &middot; ":"")+esc(co.cat)+'</div></div><div style="text-align:right;"><div style="font-size:15px;font-weight:700;">$'+fmt(co.cost)+'</div><div style="font-size:11px;color:var(--muted);">$'+fmt(cplImpact)+'/lot</div></div></div>'+badge(co.status)+'</div>';
+    });
+  });
+  html+='</div>';return html;
+}
+
+// ─── Reports view ─────────────────────────────────────────────────────────────
+
+function renderReports(){
+  document.getElementById("header-title").textContent="Reports";
+  document.getElementById("header-sub").textContent="Budget summary across all projects";
+  var hdr=document.getElementById("header");var eb=hdr.querySelector(".header-back");if(eb)eb.remove();
+  if(state.projects.length===0){return'<div class="page"><div class="empty"><div class="empty-icon">&#128202;</div><div style="font-size:14px;">Add projects to see reports</div></div></div>';}
+  var html='<div class="page">';
+  state.projects.forEach(function(proj){
+    var t=projectTotals(proj);
+    html+='<div class="card"><div style="font-size:15px;font-weight:600;margin-bottom:10px;">'+esc(proj.name)+'</div>';
+    if(proj.phases.length===0){html+='<div style="font-size:13px;color:var(--muted);">No phases added yet.</div>';}
+    else{
+      html+='<div style="font-size:12px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:8px;font-weight:600;"><div>Phase</div><div style="text-align:right;">Budget</div><div style="text-align:right;">Approved COs</div><div style="text-align:right;">CPL</div></div>';
+      proj.phases.forEach(function(ph){
+        var approved=phaseApprovedCost(ph.id);var cpl=phaseCPL(ph);
+        html+='<div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:6px 0;border-top:1px solid var(--border);"><div>'+esc(ph.name)+'</div><div style="text-align:right;">'+fmtM(ph.budget)+'</div><div style="text-align:right;color:var(--green);">'+(approved>0?'+'+fmtM(approved):'—')+'</div><div style="text-align:right;font-weight:600;">$'+fmt(Math.round(cpl))+'</div></div>';
+      });
+      html+='<div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:8px 0 0;font-weight:700;border-top:2px solid var(--border);margin-top:2px;"><div>Total</div><div style="text-align:right;">'+fmtM(t.totalBudget)+'</div><div style="text-align:right;color:var(--green);">'+(t.totalApproved>0?'+'+fmtM(t.totalApproved):'—')+'</div><div style="text-align:right;">'+fmt(t.totalLots)+' lots</div></div>';
+    }
+    html+='<div style="margin-top:12px;"><button class="btn btn-outline" style="font-size:12px;" onclick="exportCSV('+proj.id+')">&#8595; Export CSV</button></div>';
+    html+='</div>';
+  });
+  html+='</div>';return html;
+}
+
+// ─── CSV Export ───────────────────────────────────────────────────────────────
+
+function exportCSV(projId){
+  var proj=getProject(projId);if(!proj)return;
+  var rows=[["Phase","Category","Description","Vendor","Cost","CPL Impact","Status","Date","Submitted By"]];
+  proj.phases.forEach(function(ph){
+    phaseCOs(ph.id).forEach(function(co){
+      rows.push([ph.name,co.cat,co.desc,co.vendor||"",co.cost,ph.lots>0?Math.round(co.cost/ph.lots):0,co.status,co.date,co.by]);
+    });
+  });
+  var csv=rows.map(function(r){return r.map(function(v){return'"'+String(v).replace(/"/g,'""')+'"';}).join(",");}).join("\n");
+  var blob=new Blob([csv],{type:"text/csv"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=proj.name.replace(/[^a-z0-9]/gi,"_")+"_change_orders.csv";a.click();
+}
+
+// ─── AI Pricing Check ─────────────────────────────────────────────────────────
+
+function renderAIModal(){
+  var existing=document.getElementById("ai-modal");if(existing)existing.remove();
+  var co=state.aiTarget;if(!co)return;
+  var phase=null;
+  state.projects.forEach(function(p){p.phases.forEach(function(ph){if(ph.id===co.phaseId)phase=ph;});});
+  var lots=phase?phase.lots:1;var cpl=Math.round(co.cost/lots);var inner="";
+  if(state.aiLoading){
+    inner='<div class="spinner"></div><p style="text-align:center;color:var(--muted);font-size:13px;">Analyzing pricing...</p>';
+  }else if(state.aiResult){
+    var r=state.aiResult;
+    var vcols={reasonable:"var(--green)",high:"var(--red)",low:"var(--amber)",review:"var(--blue)"};
+    var vbgs={reasonable:"var(--green-bg)",high:"var(--red-bg)",low:"var(--amber-bg)",review:"var(--blue-bg)"};
+    var vlbls={reasonable:"Looks Reasonable",high:"Priced High",low:"Priced Low",review:"Needs Review"};
+    var benchHtml="";
+    if(r.benchmarkCPL){
+      var diff=((cpl-r.benchmarkCPL)/r.benchmarkCPL*100).toFixed(0);
+      benchHtml='<div style="background:var(--bg);border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:11px;">Benchmark: <strong>$'+fmt(Math.round(r.benchmarkCPL))+'/lot</strong> &middot; Your quote: <strong>$'+fmt(cpl)+'/lot</strong> <span style="color:'+(Math.abs(diff)<15?'var(--green)':'var(--red)')+';">'+(diff>0?'+':'')+diff+'% vs benchmark</span></div>';
+    }
+    var flags=(r.flags||[]).map(function(f){return'<div class="flag-item"><span style="color:var(--amber);">&rsaquo;</span>'+esc(f)+'</div>';}).join("");
+    inner='<div style="display:inline-block;padding:6px 14px;border-radius:8px;font-weight:600;font-size:14px;margin-bottom:11px;background:'+(vbgs[r.verdict]||"var(--bg)")+';color:'+(vcols[r.verdict]||"var(--muted)")+';">'+(vlbls[r.verdict]||r.verdict)+' &middot; '+r.confidencePercent+'% confidence</div><p style="font-size:14px;line-height:1.6;margin-bottom:11px;">'+esc(r.summary)+'</p>'+benchHtml+flags+'<div class="rec-box"><strong>Recommendation:</strong> '+esc(r.recommendation)+'</div>';
+  }else{
+    inner='<p style="color:var(--red);font-size:13px;">Analysis failed. Check that ANTHROPIC_API_KEY is set on the server.</p>';
+  }
+  var overlay=document.createElement("div");overlay.className="modal-overlay";overlay.id="ai-modal";
+  overlay.addEventListener("click",function(e){if(e.target===overlay)closeAI();});
+  overlay.innerHTML='<div class="modal"><div class="modal-handle"></div><div style="font-weight:600;font-size:16px;margin-bottom:4px;">AI Pricing Analysis</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;">'+esc(co.cat)+' &middot; $'+fmt(co.cost)+' &middot; $'+fmt(cpl)+'/lot</div>'+inner+'<button class="btn btn-outline" style="width:100%;padding:11px;border-radius:10px;margin-top:14px;" onclick="closeAI()">Close</button></div>';
+  document.body.appendChild(overlay);
+}
+
+async function doAICall(co){
+  var phase=null;
+  state.projects.forEach(function(p){p.phases.forEach(function(ph){if(ph.id===co.phaseId)phase=ph;});});
+  var lots=phase?phase.lots:1;var cpl=co.cost/lots;
+  var prompt="You are a land development cost estimator. Respond ONLY with valid JSON, no markdown.\n\nCHANGE ORDER:\n- Category: "+co.cat+"\n- Description: "+co.desc+"\n- Scope: "+(co.scope||"Not specified")+"\n- Vendor: "+(co.vendor||"Not specified")+"\n- Total: $"+fmt(co.cost)+" ($"+fmt(Math.round(cpl))+"/lot)\n- Lots in phase: "+lots+"\n\nReturn this exact JSON:\n{\"verdict\":\"reasonable|high|low|review\",\"confidencePercent\":0,\"summary\":\"2-3 sentence verdict\",\"flags\":[\"up to 4 flags\"],\"benchmarkCPL\":0,\"recommendation\":\"one sentence for PM manager\"}";
+  try{
+    // Route through server proxy so API key stays server-side
+    var res=await fetch("/api/ai-check",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,messages:[{role:"user",content:prompt}]})
+    });
+    var data=await res.json();
+    var txt="";
+    if(data.content)data.content.forEach(function(b){if(b.type==="text")txt+=b.text;});
+    state.aiResult=JSON.parse(txt.replace(/```json|```/g,"").trim());
+  }catch(e){
+    console.error("AI error:",e);
+    state.aiResult=null;
+  }
+  state.aiLoading=false;renderAIModal();
+}
+
+async function runAI(id){
+  var co=state.cos.find(function(c){return c.id===id;});if(!co)return;
+  state.aiTarget=co;state.aiResult=null;state.aiLoading=true;renderAIModal();await doAICall(co);
+}
+
+async function runAIFromForm(){
+  var f=state.coForm;if(!f||!f.cost||!f.desc)return;
+  var co={id:0,phaseId:f.phaseId,cat:f.cat,desc:f.desc,scope:f.scope,vendor:f.vendor,cost:parseFloat(f.cost)||0};
+  state.aiTarget=co;state.aiResult=null;state.aiLoading=true;renderAIModal();await doAICall(co);
+}
+
+function closeAI(){state.aiTarget=null;state.aiResult=null;var el=document.getElementById("ai-modal");if(el)el.remove();}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+async function init(){
+  await loadAll();
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
